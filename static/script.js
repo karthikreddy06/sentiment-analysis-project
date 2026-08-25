@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
         alertBox.className = "alert-box";
         if (type === "error") {
             alertBox.classList.add("alert-error");
-            alertIcon.textContent = "❌";
+            alertIcon.textContent = "⚠️";
         } else if (type === "info") {
             alertBox.classList.add("alert-info");
             alertIcon.textContent = "ℹ️";
@@ -181,7 +181,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({ textToAnalyze: text })
             });
 
-            // If response is JSON
             const contentType = response.headers.get("content-type") || "";
             let resultData;
 
@@ -191,22 +190,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 const textResponse = await response.text();
                 resultData = {
                     message: textResponse,
-                    status: response.ok ? "success" : "error"
+                    status: response.ok ? "SUCCESS" : "API_ERROR"
                 };
             }
 
-            // Handle invalid response or empty status
-            if (response.status === 400 || resultData.status === "empty") {
+            const status = resultData.status || "";
+
+            // Handle service timeouts and connection errors
+            if (response.status === 503 || status === "TIMEOUT" || status === "CONNECTION_ERROR") {
+                showAlert(resultData.message || "Sentiment service is currently unavailable. Please try again later.", "error");
+            } else if (response.status === 400 || status === "EMPTY_INPUT") {
                 showAlert(resultData.message || "Please enter some text to analyze.", "warning");
-            } else if (resultData.status === "invalid" || resultData.message === "Invalid input! Try again.") {
+            } else if (status === "INVALID_INPUT" || resultData.message === "Invalid input! Try again.") {
                 showAlert("Invalid input! Try again.", "error");
-            } else if (!response.ok) {
-                showAlert(resultData.message || "An error occurred while analyzing sentiment.", "error");
+            } else if (response.status === 502 || status === "API_ERROR" || status === "INVALID_RESPONSE") {
+                showAlert(resultData.message || "Sentiment service is currently unavailable. Please try again later.", "error");
             } else if (resultData.label && resultData.score !== undefined) {
                 renderResult(resultData);
             } else {
-                // Fallback for plain text response
-                showAlert(resultData.message, "info");
+                showAlert(resultData.message || "Sentiment service is currently unavailable. Please try again later.", "info");
             }
 
         } catch (error) {

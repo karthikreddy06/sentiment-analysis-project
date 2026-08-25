@@ -5,7 +5,8 @@ Provides the web UI at '/' and the sentiment analysis endpoint at '/sentimentAna
 """
 
 import logging
-from flask import Flask, render_template, request, jsonify
+from typing import Any, Dict, Tuple
+from flask import Flask, render_template, request, jsonify, Response
 from SentimentAnalysis.sentiment_analysis import sentiment_analyzer
 
 # Configure logging
@@ -31,15 +32,66 @@ def format_sentiment_label(raw_label: str) -> str:
     """
     if not raw_label:
         return ""
-    cleaned = raw_label.replace("SENT_", "").strip()
-    return cleaned.upper()
+    return raw_label.replace("SENT_", "").strip().upper()
+
+
+def extract_input_text() -> str:
+    """Extracts textToAnalyze parameter from GET or POST request."""
+    if request.method == "POST":
+        if request.is_json:
+            data = request.get_json(silent=True) or {}
+            return data.get("textToAnalyze", "")
+        return request.form.get("textToAnalyze", "")
+    return request.args.get("textToAnalyze", "")
+
+
+def create_response(
+    message: str,
+    status_code: int,
+    status_type: str,
+    label: Any = None,
+    score: Any = None
+) -> Tuple[Response, int] | Tuple[str, int]:
+    """Builds unified JSON or text response based on request headers."""
+    if request.headers.get("Accept") == "application/json" or request.is_json:
+        return jsonify({
+            "message": message,
+            "label": label,
+            "score": score,
+            "status": status_type
+        }), status_code
+    return message, status_code
+
+
+def process_sentiment_status(sentiment_result: Dict[str, Any]) -> Tuple[Any, int]:
+    """Maps sentiment analyzer result to appropriate HTTP response and code."""
+    status = sentiment_result.get("status", "API_ERROR")
+    label = sentiment_result.get("label")
+    score = sentiment_result.get("score")
+
+    if status in ("TIMEOUT", "CONNECTION_ERROR"):
+        logger.warning("Watson service unreachable or timed out (status=%s).", status)
+        msg = "Sentiment service is currently unavailable. Please try again later."
+        return create_response(msg, 503, status)
+
+    if status == "INVALID_INPUT":
+        logger.warning("Invalid input received for sentiment analysis.")
+        return create_response("Invalid input! Try again.", 200, "INVALID_INPUT")
+
+    if status in ("API_ERROR", "INVALID_RESPONSE") or label is None or score is None:
+        logger.warning("Sentiment analysis failed with status=%s.", status)
+        msg = "Sentiment service is currently unavailable. Please try again later."
+        return create_response(msg, 502, status)
+
+    display_label = format_sentiment_label(label)
+    rounded_score = round(float(score), 4)
+    msg = f"The given text has been identified as {display_label} with a score of {rounded_score}."
+    return create_response(msg, 200, "SUCCESS", display_label, rounded_score)
 
 
 @app.route("/")
 def render_index_page():
-    """
-    Renders the main index HTML template.
-    """
+    """Renders the main index HTML template."""
     return render_template("index.html")
 
 
@@ -49,29 +101,12 @@ def analyze_sentiment():
     Endpoint that processes user-submitted text and returns sentiment evaluation.
     Supports GET (query param 'textToAnalyze') and POST (JSON or form body).
     """
-    text_to_analyze = ""
-
-    if request.method == "POST":
-        if request.is_json:
-            data = request.get_json(silent=True) or {}
-            text_to_analyze = data.get("textToAnalyze", "")
-        else:
-            text_to_analyze = request.form.get("textToAnalyze", "")
-    else:
-        text_to_analyze = request.args.get("textToAnalyze", "")
+    text_to_analyze = extract_input_text()
 
     # Check for empty or whitespace-only input
     if text_to_analyze is None or not text_to_analyze.strip():
         logger.info("Received empty input text for sentiment analysis.")
-        response_msg = "Please enter some text to analyze."
-        if request.headers.get("Accept") == "application/json" or request.is_json:
-            return jsonify({
-                "message": response_msg,
-                "label": None,
-                "score": None,
-                "status": "empty"
-            }), 400
-        return response_msg, 400
+        return create_response("Please enter some text to analyze.", 400, "EMPTY_INPUT")
 
     text_to_analyze = text_to_analyze.strip()
     logger.info("Analyzing text (length=%d characters)...", len(text_to_analyze))
@@ -80,42 +115,9 @@ def analyze_sentiment():
         sentiment_result = sentiment_analyzer(text_to_analyze)
     except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.error("Unexpected exception during sentiment analysis: %s", exc)
-        sentiment_result = {"label": None, "score": None}
+        sentiment_result = {"label": None, "score": None, "status": "API_ERROR"}
 
-    label = sentiment_result.get("label")
-    score = sentiment_result.get("score")
-
-    # Handle invalid or failed analysis
-    if label is None or score is None:
-        logger.warning("Sentiment analyzer returned None for label or score.")
-        response_msg = "Invalid input! Try again."
-        if request.headers.get("Accept") == "application/json" or request.is_json:
-            return jsonify({
-                "message": response_msg,
-                "label": None,
-                "score": None,
-                "status": "invalid"
-            }), 200
-        return response_msg, 200
-
-    # Format sentiment result
-    display_label = format_sentiment_label(label)
-    rounded_score = round(float(score), 4)
-
-    response_msg = (
-        f"The given text has been identified as {display_label} "
-        f"with a score of {rounded_score}."
-    )
-
-    if request.headers.get("Accept") == "application/json" or request.is_json:
-        return jsonify({
-            "message": response_msg,
-            "label": display_label,
-            "score": rounded_score,
-            "status": "success"
-        }), 200
-
-    return response_msg, 200
+    return process_sentiment_status(sentiment_result)
 
 
 if __name__ == "__main__":
