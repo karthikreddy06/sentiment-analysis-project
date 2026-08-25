@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Real-time text sentiment analysis powered by Watson NLP BERT and Flask.">
+    <title>Watson NLP Sentiment Analyzer | AI-Powered Text Intelligence</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="background-decorations" aria-hidden="true">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+        <div class="glow-orb orb-3"></div>
+    </div>
+
+    <main class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="badge-pill">
+                <span class="pulse-dot"></span>
+                <span>Watson NLP BERT Engine</span>
+            </div>
+            <h1 class="main-title">Sentiment Analysis Intelligence</h1>
+            <p class="subtitle">
+                Evaluate emotional tone, sentiment orientation, and model confidence scores in real time using deep bidirectional language representations.
+            </p>
+        </header>
+
+        <!-- Main Card -->
+        <section class="card glass-panel" aria-label="Sentiment Analysis Workspace">
+            <form id="sentimentForm" class="analysis-form" onsubmit="return false;">
+                <div class="form-header">
+                    <label for="textToAnalyze" class="input-label">
+                        Enter text to analyze
+                    </label>
+                    <span class="char-count-badge" id="charCount">0 characters</span>
+                </div>
+
+                <div class="textarea-wrapper">
+                    <textarea 
+                        id="textToAnalyze" 
+                        name="textToAnalyze" 
+                        rows="5" 
+                        placeholder="Type or paste customer feedback, reviews, tweets, or sentences here... (e.g. 'I am extremely satisfied with the exceptional customer support!')"
+                        aria-label="Text to analyze for sentiment"
+                        maxlength="5000"
+                    ></textarea>
+                </div>
+
+                <!-- Sample Prompts -->
+                <div class="quick-samples">
+                    <span class="samples-label">Try sample:</span>
+                    <button type="button" class="chip-btn" data-sample="I absolutely loved the customer experience, it was fast and friendly!">Positive</button>
+                    <button type="button" class="chip-btn" data-sample="The application keeps crashing and the service is very frustrating.">Negative</button>
+                    <button type="button" class="chip-btn" data-sample="The quarterly report is scheduled for release next Thursday.">Neutral</button>
+                </div>
+
+                <!-- Action Controls -->
+                <div class="actions-row">
+                    <button type="button" id="clearBtn" class="btn btn-secondary">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        <span>Clear Text</span>
+                    </button>
+
+                    <button type="button" id="analyzeBtn" class="btn btn-primary">
+                        <span class="btn-text">Analyze Sentiment</span>
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                        <div class="spinner" id="btnSpinner" aria-hidden="true"></div>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Notification / Error Message Area -->
+            <div id="alertBox" class="alert-box hidden" role="alert" aria-live="polite">
+                <div class="alert-icon" id="alertIcon">⚠️</div>
+                <div class="alert-content" id="alertMessage"></div>
+            </div>
+
+            <!-- Result Card Area -->
+            <div id="resultCard" class="result-card hidden" aria-live="polite">
+                <div class="result-header">
+                    <div class="result-title-group">
+                        <span class="result-eyebrow">Analysis Result</span>
+                        <h2 class="result-heading" id="systemOutputText"></h2>
+                    </div>
+                    <div class="sentiment-indicator-badge" id="sentimentBadge">
+                        <span class="indicator-icon" id="indicatorIcon"></span>
+                        <span class="indicator-label" id="indicatorLabel"></span>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <span class="metric-title">Predicted Sentiment</span>
+                        <div class="metric-value" id="displaySentiment">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-title">Confidence Score</span>
+                        <div class="metric-value" id="displayScore">--</div>
+                        <div class="confidence-bar-container">
+                            <div class="confidence-bar-fill" id="confidenceBar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="result-meta">
+                    <span class="meta-item">
+                        <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 14 14"></polyline>
+                        </svg>
+                        <span id="timestampText">Just now</span>
+                    </span>
+                    <span class="meta-item">
+                        <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        <span>Model: BERT-Aggregated Multilingual</span>
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Built with Python 3.11 &bull; Flask &bull; Watson NLP BERT &bull; Unit Tested &amp; PEP 8 Compliant</p>
+        </footer>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
