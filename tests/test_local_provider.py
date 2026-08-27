@@ -84,33 +84,6 @@ class TestLocalProvider(unittest.TestCase):
         self.assertAlmostEqual(result["score"], 0.8800, places=4)
         self.assertEqual(result["provider"], "local")
 
-    @patch("requests.post")
-    def test_external_api_routing(self, mock_post):
-        """Test that LocalTransformerProvider routes to external API when SENTIMENT_ANALYSIS_API_URL is configured."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "success": True,
-            "label": "POSITIVE",
-            "score": 0.9999,
-            "provider": "local",
-            "message": "Model predicted positive"
-        }
-        mock_post.return_value = mock_response
-
-        with patch.dict("os.environ", {"SENTIMENT_ANALYSIS_API_URL": "https://external-sentiment-api.com"}):
-            result = self.provider.analyze("Some text")
-            self.assertEqual(result["status"], "success")
-            self.assertEqual(result["label"], "POSITIVE")
-            self.assertAlmostEqual(result["score"], 0.9999, places=4)
-            self.assertEqual(result["provider"], "local")
-            mock_post.assert_called_once_with(
-                "https://external-sentiment-api.com/sentimentAnalyzer",
-                json={"text": "Some text"},
-                headers={"Content-Type": "application/json", "Accept": "application/json"},
-                timeout=10
-            )
-
     @patch.object(LocalTransformerProvider, "_load_pipeline")
     def test_model_failure_graceful_handling(self, mock_load):
         """Test graceful failure when underlying pipeline fails."""

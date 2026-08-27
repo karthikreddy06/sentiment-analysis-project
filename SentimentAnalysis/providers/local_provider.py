@@ -47,7 +47,7 @@ class LocalTransformerProvider(BaseSentimentProvider):
                         self.model_name
                     )
                     try:
-                        # Lazy import to avoid overhead when using watson provider
+                        # Lazy import to avoid overhead when using other providers
                         from transformers import pipeline  # pylint: disable=import-outside-toplevel
                         LocalTransformerProvider._pipeline = pipeline(
                             "sentiment-analysis",
@@ -93,40 +93,6 @@ class LocalTransformerProvider(BaseSentimentProvider):
             "provider": self.provider_name,
             "status": "service_unavailable"
         }
-
-        api_url = os.getenv("SENTIMENT_ANALYSIS_API_URL", "").strip()
-        if api_url:
-            logger.info("Routing local provider request to external sentiment API: %s", api_url)
-            try:
-                import requests
-                api_endpoint = api_url.rstrip('/') + '/sentimentAnalyzer'
-                response = requests.post(
-                    api_endpoint,
-                    json={"text": text},
-                    headers={"Content-Type": "application/json", "Accept": "application/json"},
-                    timeout=10
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    return {
-                        "label": data.get("label"),
-                        "score": data.get("score"),
-                        "provider": data.get("provider", self.provider_name),
-                        "status": "success" if data.get("success") else "error"
-                    }
-                elif response.status_code == 400:
-                    return {
-                        "label": None,
-                        "score": None,
-                        "provider": self.provider_name,
-                        "status": "invalid_input"
-                    }
-                else:
-                    logger.error("External API returned status code %d", response.status_code)
-                    return fallback_result
-            except Exception as exc:
-                logger.error("Failed to connect to external sentiment API: %s", exc)
-                return fallback_result
 
         try:
             classifier = self._load_pipeline()

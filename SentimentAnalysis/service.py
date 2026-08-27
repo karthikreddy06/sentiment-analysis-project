@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional
 from .providers.base import BaseSentimentProvider
 from .providers.local_provider import LocalTransformerProvider
 from .providers.watson_provider import WatsonNLPProvider
+from .providers.huggingface_provider import HuggingFaceProvider
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +34,9 @@ class SentimentService:
         provider_key = os.getenv("SENTIMENT_PROVIDER", "").strip().lower()
         if not provider_key:
             if os.getenv("VERCEL") and os.getenv("SENTIMENT_ANALYSIS_API_URL"):
-                provider_key = "local"
+                provider_key = "huggingface"
             elif os.getenv("VERCEL"):
-                provider_key = "watson"
+                provider_key = "huggingface"
             else:
                 provider_key = "local"
             
@@ -45,10 +46,13 @@ class SentimentService:
         if provider_key == "watson":
             logger.info("Initializing SentimentService with 'WatsonNLPProvider'.")
             return WatsonNLPProvider()
+        if provider_key == "huggingface":
+            logger.info("Initializing SentimentService with 'HuggingFaceProvider'.")
+            return HuggingFaceProvider()
 
         error_msg = (
             f"Invalid SENTIMENT_PROVIDER configured: '{provider_key}'. "
-            "Supported values are 'local' or 'watson'."
+            "Supported values are 'local', 'watson', or 'huggingface'."
         )
         logger.error(error_msg)
         raise ValueError(error_msg)
