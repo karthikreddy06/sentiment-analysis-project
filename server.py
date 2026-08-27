@@ -92,13 +92,19 @@ def render_index_page():
 
 @app.errorhandler(404)
 def page_not_found(e):
+    # Serialize only string/JSON-serializable elements of environ
+    serializable_environ = {}
+    for k, v in request.environ.items():
+        if isinstance(v, (str, int, float, bool, list, dict)):
+            serializable_environ[k] = v
+        else:
+            serializable_environ[k] = str(v)
+            
     return jsonify({
         "error": "Not Found",
         "path": request.path,
-        "environ_path_info": request.environ.get('PATH_INFO'),
-        "environ_script_name": request.environ.get('SCRIPT_NAME'),
-        "url": request.url,
-        "headers": dict(request.headers)
+        "environ": serializable_environ,
+        "url": request.url
     }), 404
 
 
