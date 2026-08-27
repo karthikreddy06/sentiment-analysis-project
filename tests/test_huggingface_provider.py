@@ -178,6 +178,36 @@ class TestHuggingFaceProvider(unittest.TestCase):
             self.assertEqual(result["status"], "error")
             self.assertIsNone(result["label"])
 
+    @patch("SentimentAnalysis.providers.huggingface_provider.requests.post")
+    def test_single_dict_response(self, mock_post):
+        """Test HF provider parsing single dict response format."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"label": "positive", "score": 0.9912}
+        mock_post.return_value = mock_response
+
+        result = self.provider.analyze("Superb service!")
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["label"], "POSITIVE")
+        self.assertAlmostEqual(result["score"], 0.9912, places=4)
+
+    @patch("SentimentAnalysis.providers.huggingface_provider.requests.post")
+    def test_list_of_dicts_response(self, mock_post):
+        """Test HF provider parsing list of dicts response format."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [
+            {"label": "neutral", "score": 0.85},
+            {"label": "positive", "score": 0.10},
+            {"label": "negative", "score": 0.05}
+        ]
+        mock_post.return_value = mock_response
+
+        result = self.provider.analyze("The meeting is at 10 AM.")
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["label"], "NEUTRAL")
+        self.assertAlmostEqual(result["score"], 0.8500, places=4)
+
 
 if __name__ == "__main__":
     unittest.main()

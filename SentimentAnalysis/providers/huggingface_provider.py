@@ -30,7 +30,7 @@ class HuggingFaceProvider(BaseSentimentProvider):
         return "huggingface"
 
     def _get_config(self) -> Tuple[str, Dict[str, str], int]:
-        model_id = os.getenv("HF_MODEL_ID", DEFAULT_HF_MODEL)
+        model_id = os.getenv("HF_MODEL_ID", DEFAULT_HF_MODEL).strip() or DEFAULT_HF_MODEL
         api_url = os.getenv("SENTIMENT_ANALYSIS_API_URL", "").strip()
         if "api-inference.huggingface.co" in api_url:
             api_url = api_url.replace("https://api-inference.huggingface.co/models/", "https://router.huggingface.co/hf-inference/models/")
@@ -38,7 +38,14 @@ class HuggingFaceProvider(BaseSentimentProvider):
         if not api_url:
             api_url = f"https://router.huggingface.co/hf-inference/models/{model_id}"
         
-        api_token = os.getenv("SENTIMENT_API_TOKEN", "").strip()
+        # Read API token from any common environment variable
+        raw_token = (
+            os.getenv("SENTIMENT_API_TOKEN", "") or
+            os.getenv("HF_TOKEN", "") or
+            os.getenv("HUGGINGFACE_TOKEN", "") or
+            os.getenv("HUGGING_FACE_HUB_TOKEN", "") or
+            os.getenv("HF_API_TOKEN", "")
+        ).strip().strip("\"'")
         
         try:
             timeout = int(os.getenv("HF_TIMEOUT", str(DEFAULT_TIMEOUT_SEC)))
@@ -48,9 +55,10 @@ class HuggingFaceProvider(BaseSentimentProvider):
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "x-wait-for-model": "true"
         }
-        if api_token:
-            headers["Authorization"] = f"Bearer {api_token}"
+        if raw_token:
+            headers["Authorization"] = f"Bearer {raw_token}"
 
         return api_url, headers, timeout
 
@@ -96,13 +104,48 @@ class HuggingFaceProvider(BaseSentimentProvider):
             return "NEUTRAL"
         return clean.upper()
 
+    @classmethod
+    def _extract_best_prediction(cls, data: Any) -> Optional[Tuple[str, float]]:
+        """
+        Robustly extracts the best prediction (label, score) from diverse HF response shapes.
+        """
+        if not data:
+            return None
+
+        # Dict response
+        if isinstance(data, dict):
+            if "label" in data and "score" in data:
+                return str(data["label"]), float(data["score"])
+            if "error" in data:
+                return None
+            for nested_key in ("predictions", "output", "data", "results"):
+                if nested_key in data and data[nested_key]:
+                    return cls._extract_best_prediction(data[nested_key])
+            return None
+
+        # List response
+        if isinstance(data, list):
+            items = data
+            if len(data) > 0 and isinstance(data[0], list):
+                items = data[0]
+
+            valid_preds = [
+                p for p in items
+                if isinstance(p, dict) and "label" in p and "score" in p
+            ]
+            if valid_preds:
+                best = max(valid_preds, key=lambda x: float(x.get("score", 0.0)))
+                return str(best["label"]), float(best["score"])
+
+        return None
+
     def analyze(self, text: str) -> Dict[str, Any]:
         """
         Calls Hugging Face Inference API and normalizes sentiment response.
         """
         provider = self.provider_name
         url, headers, timeout = self._get_config()
-        payload = {"inputs": text, "options": {"wait_for_model": True}}
+        payload = {"inputs": text}
         result: Dict[str, Any] = self._fallback_result(provider)
 
         try:
@@ -115,40 +158,26 @@ class HuggingFaceProvider(BaseSentimentProvider):
 
             if response.status_code == 200:
                 response_data = response.json()
+                extracted = self._extract_best_prediction(response_data)
                 
-                # HF Inference API returns list of predictions
-                if isinstance(response_data, list) and response_data:
-                    predictions = response_data[0] if isinstance(response_data[0], list) else response_data
-                    
-                    if isinstance(predictions, list) and predictions:
-                        # Find highest scoring prediction
-                        best_pred = max(predictions, key=lambda x: x.get("score", 0))
-                        raw_label = best_pred.get("label")
-                        score = best_pred.get("score")
-
-                        if raw_label is not None and score is not None:
-                            clean_label = self._normalize_label(raw_label)
-                            result = {
-                                "label": clean_label,
-                                "score": round(float(score), 4),
-                                "provider": provider,
-                                "status": "success"
-                            }
-                        else:
-                            logger.warning("HF response missing label/score fields: %s", response_data)
-                            result = self._error_result(provider)
-                    else:
-                        logger.warning("HF response has empty predictions: %s", response_data)
-                        result = self._error_result(provider)
+                if extracted:
+                    raw_label, score = extracted
+                    clean_label = self._normalize_label(raw_label)
+                    result = {
+                        "label": clean_label,
+                        "score": round(float(score), 4),
+                        "provider": provider,
+                        "status": "success"
+                    }
                 else:
-                    logger.warning("Unexpected HF response format: %s", response_data)
+                    logger.warning("Failed to extract predictions from HF response: %s", response_data)
                     result = self._error_result(provider)
 
             elif response.status_code == 400:
                 logger.warning("HF returned HTTP 400 Bad Request: %s", response.text)
                 result = self._invalid_input_result(provider)
             elif response.status_code == 401:
-                logger.error("HF returned HTTP 401 Unauthorized - check SENTIMENT_API_TOKEN")
+                logger.error("HF returned HTTP 401 Unauthorized: %s - check SENTIMENT_API_TOKEN", response.text)
                 result = self._error_result(provider)
             elif response.status_code == 404:
                 logger.error("HF returned HTTP 404 - model not found: %s", url)
