@@ -24,6 +24,27 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 
+class VercelPathMiddleware:
+    """WSGI middleware to strip Vercel routing prefixes from PATH_INFO."""
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        path = environ.get('PATH_INFO', '')
+        for prefix in ['/api/index.py', '/api/index', '/api']:
+            if path.startswith(prefix):
+                path = path[len(prefix):]
+                break
+        if not path.startswith('/'):
+            path = '/' + path
+        environ['PATH_INFO'] = path
+        return self.wsgi_app(environ, start_response)
+
+
+app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
+
+
+
 def extract_input_text() -> str:
     """Extracts text parameter from JSON body, form data, or query param."""
     if request.method == "POST":
@@ -88,25 +109,6 @@ def false_flag() -> bool:
 def render_index_page():
     """Renders the main index HTML template."""
     return render_template("index.html")
-
-
-@app.errorhandler(404)
-def page_not_found(e):
-    # Serialize only string/JSON-serializable elements of environ
-    serializable_environ = {}
-    for k, v in request.environ.items():
-        if isinstance(v, (str, int, float, bool, list, dict)):
-            serializable_environ[k] = v
-        else:
-            serializable_environ[k] = str(v)
-            
-    return jsonify({
-        "error": "Not Found",
-        "path": request.path,
-        "environ": serializable_environ,
-        "url": request.url
-    }), 404
-
 
 
 @app.after_request
