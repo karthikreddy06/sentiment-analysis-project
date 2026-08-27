@@ -8,7 +8,7 @@ Hugging Face Inference API for a 3-class sentiment model.
 import json
 import logging
 import os
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 import requests
 from .base import BaseSentimentProvider
 
@@ -38,14 +38,24 @@ class HuggingFaceProvider(BaseSentimentProvider):
         if not api_url:
             api_url = f"https://router.huggingface.co/hf-inference/models/{model_id}"
         
-        # Read API token from any common environment variable
-        raw_token = (
-            os.getenv("SENTIMENT_API_TOKEN", "") or
-            os.getenv("HF_TOKEN", "") or
-            os.getenv("HUGGINGFACE_TOKEN", "") or
-            os.getenv("HUGGING_FACE_HUB_TOKEN", "") or
-            os.getenv("HF_API_TOKEN", "")
-        ).strip().strip("\"'")
+        # Read API token from any common environment variable alias
+        raw_token = ""
+        for env_var in [
+            "SENTIMENT_API_TOKEN",
+            "HF_TOKEN",
+            "HUGGINGFACE_TOKEN",
+            "HUGGING_FACE_HUB_TOKEN",
+            "HF_API_TOKEN",
+        ]:
+            val = os.getenv(env_var, "").strip()
+            if val:
+                # Strip outer quotes if wrapped in single or double quotes
+                if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+                    val = val[1:-1].strip()
+                val = val.strip("\"' \t\r\n")
+                if val:
+                    raw_token = val
+                    break
         
         try:
             timeout = int(os.getenv("HF_TIMEOUT", str(DEFAULT_TIMEOUT_SEC)))
@@ -59,6 +69,8 @@ class HuggingFaceProvider(BaseSentimentProvider):
         }
         if raw_token:
             headers["Authorization"] = f"Bearer {raw_token}"
+        else:
+            logger.warning("No Hugging Face token detected in environment variables (SENTIMENT_API_TOKEN/HF_TOKEN).")
 
         return api_url, headers, timeout
 
@@ -177,7 +189,7 @@ class HuggingFaceProvider(BaseSentimentProvider):
                 logger.warning("HF returned HTTP 400 Bad Request: %s", response.text)
                 result = self._invalid_input_result(provider)
             elif response.status_code == 401:
-                logger.error("HF returned HTTP 401 Unauthorized: %s - check SENTIMENT_API_TOKEN", response.text)
+                logger.error("HF returned HTTP 401 Unauthorized - invalid or missing Hugging Face API token.")
                 result = self._error_result(provider)
             elif response.status_code == 404:
                 logger.error("HF returned HTTP 404 - model not found: %s", url)

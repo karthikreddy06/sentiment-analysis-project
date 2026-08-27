@@ -208,6 +208,28 @@ class TestHuggingFaceProvider(unittest.TestCase):
         self.assertEqual(result["label"], "NEUTRAL")
         self.assertAlmostEqual(result["score"], 0.8500, places=4)
 
+    def test_token_loading_and_quote_stripping(self):
+        """Test token loading across various environment aliases and quote trimming."""
+        test_cases = [
+            ("SENTIMENT_API_TOKEN", "mock_hf_token_123", "Bearer mock_hf_token_123"),
+            ("HF_TOKEN", '"mock_hf_token_456"', "Bearer mock_hf_token_456"),
+            ("HUGGINGFACE_TOKEN", "'mock_hf_token_789'", "Bearer mock_hf_token_789"),
+            ("HUGGING_FACE_HUB_TOKEN", "  mock_hf_token_abc  ", "Bearer mock_hf_token_abc"),
+            ("HF_API_TOKEN", '  "mock_hf_token_xyz"  ', "Bearer mock_hf_token_xyz"),
+        ]
+
+        for env_key, env_val, expected_header in test_cases:
+            with patch.dict("os.environ", {env_key: env_val}, clear=True):
+                _, headers, _ = self.provider._get_config()
+                self.assertEqual(headers.get("Authorization"), expected_header, f"Failed for {env_key}")
+                self.assertEqual(headers.get("x-wait-for-model"), "true")
+
+    def test_token_empty_handling(self):
+        """Test that no Authorization header is added when tokens are absent or empty."""
+        with patch.dict("os.environ", {"SENTIMENT_API_TOKEN": "   "}, clear=True):
+            _, headers, _ = self.provider._get_config()
+            self.assertNotIn("Authorization", headers)
+
 
 if __name__ == "__main__":
     unittest.main()
