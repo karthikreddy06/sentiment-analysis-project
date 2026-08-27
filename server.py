@@ -90,6 +90,18 @@ def render_index_page():
     return render_template("index.html")
 
 
+@app.errorhandler(404)
+def page_not_found(e):
+    return jsonify({
+        "error": "Not Found",
+        "path": request.path,
+        "environ_path_info": request.environ.get('PATH_INFO'),
+        "environ_script_name": request.environ.get('SCRIPT_NAME'),
+        "url": request.url
+    }), 404
+
+
+
 @app.after_request
 def add_cors_headers(response):
     """Adds CORS headers to the response if allowed origins match."""
