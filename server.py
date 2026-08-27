@@ -90,9 +90,39 @@ def render_index_page():
     return render_template("index.html")
 
 
-@app.route("/health", methods=["GET"])
+@app.after_request
+def add_cors_headers(response):
+    """Adds CORS headers to the response if allowed origins match."""
+    import os
+    origin = request.headers.get("Origin")
+    allowed_origins = os.getenv("ALLOWED_ORIGINS", "")
+    origins_list = [o.strip() for o in allowed_origins.split(",") if o.strip()]
+    if not origins_list:
+        origins_list = ["http://localhost:5000", "http://127.0.0.1:5000", "http://localhost:3000"]
+    
+    if origin in origins_list:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
+        response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
+    return response
+
+
+@app.route("/config", methods=["GET", "OPTIONS"])
+def get_config():
+    """Returns runtime configuration for the frontend."""
+    if request.method == "OPTIONS":
+        return Response(status=200)
+    import os
+    return jsonify({
+        "apiUrl": os.getenv("SENTIMENT_ANALYSIS_API_URL", "")
+    }), 200
+
+
+@app.route("/health", methods=["GET", "OPTIONS"])
 def health_check():
     """Returns application liveness and active provider status."""
+    if request.method == "OPTIONS":
+        return Response(status=200)
     service = get_sentiment_service()
     return jsonify({
         "status": "ok",
@@ -100,12 +130,14 @@ def health_check():
     }), 200
 
 
-@app.route("/sentimentAnalyzer", methods=["GET", "POST"])
+@app.route("/sentimentAnalyzer", methods=["GET", "POST", "OPTIONS"])
 def analyze_sentiment():
     """
     Sentiment analysis endpoint.
     Accepts text and returns evaluated sentiment JSON.
     """
+    if request.method == "OPTIONS":
+        return Response(status=200)
     text_to_analyze = extract_input_text()
 
     if text_to_analyze is None or not text_to_analyze.strip():

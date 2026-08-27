@@ -221,3 +221,34 @@ python scripts/test_watson_connection.py
 1. **Empty or Whitespace Inputs**: Triggers a fast-fail validator returning `INVALID_INPUT` and HTTP 400.
 2. **Upstream Network Failures**: Connection errors and timeouts from the Watson API return `SERVICE_UNAVAILABLE` and HTTP 503 instead of crashing the server.
 3. **Model Errors**: Gracefully handles Hugging Face pipeline initialization/inference faults by falling back to descriptive status codes.
+4. **Malformed Responses / Missing Keys**: Safely parsed using `.get()` guards returning `INVALID_RESPONSE`.
+5. **Server Resilience**: The Flask app isolates per-request exceptions so the service remains 100% available.
+
+---
+
+## Deployment
+
+This project is prepared for deployment to **Vercel** with a clean separation of concerns for ML capabilities:
+
+### Vercel Deployment Strategy
+
+1. **Frontend + Routing**: Deployed directly on Vercel as a lightweight Python serverless function (`Flask`).
+2. **ML Backend Separation**:
+   - Because deep learning libraries like PyTorch and Hugging Face Transformers exceed Vercel's Serverless Function size limit (250MB) and timeout limits, the local ML inference engine is meant to be hosted on an ML-compatible Python platform (e.g. Render, Railway, or Hugging Face Spaces).
+   - Alternatively, you can use the **Watson NLP** provider directly on Vercel.
+
+### Vercel Configuration Files
+
+- [`vercel.json`](file:///C:/Users/M.Karthik%20Reddy/.gemini/antigravity-ide/scratch/sentiment_analysis_project/vercel.json): Configures Vercel's Python builder to execute `api/index.py` and route all traffic through it.
+- [`api/index.py`](file:///C:/Users/M.Karthik%20Reddy/.gemini/antigravity-ide/scratch/sentiment_analysis_project/api/index.py): Entrypoint mapping requests to `server.py`.
+- [`api/requirements.txt`](file:///C:/Users/M.Karthik%20Reddy/.gemini/antigravity-ide/scratch/sentiment_analysis_project/api/requirements.txt): Specially trimmed down requirements list excluding heavy dependencies (`torch` and `transformers`) so the Vercel function builds instantly.
+
+### Deployment Environment Variables
+
+Configure these settings in your Vercel Dashboard under **Environment Variables**:
+
+| Variable | Recommended Value | Description |
+| :--- | :--- | :--- |
+| `SENTIMENT_ANALYSIS_API_URL` | `https://your-ml-backend-url.com` | (Optional) Deployed external API endpoint for separate ML hosting. Defaults to relative paths if omitted (e.g., local server). |
+| `ALLOWED_ORIGINS` | `https://your-vercel-domain.vercel.app` | Comma-separated list of origins permitted to access CORS-enabled endpoints. |
+| `SENTIMENT_PROVIDER` | `watson` (or `local` if ML url is proxied) | Active provider backend configuration. |

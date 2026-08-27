@@ -29,10 +29,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let isRequestActive = false;
 
+    let apiBaseUrl = "";
+
     // Provider badge
     async function updateProviderBadge() {
         try {
-            const res = await fetch("/health");
+            const res = await fetch(`${apiBaseUrl}/health`);
             if (res.ok) {
                 const data = await res.json();
                 providerBadgeText.textContent = data.provider === "watson" ? "● WATSON NLP" : "● LOCAL AI ENGINE";
@@ -41,7 +43,21 @@ document.addEventListener("DOMContentLoaded", () => {
             console.warn("Could not fetch provider status from /health", err);
         }
     }
-    updateProviderBadge();
+
+    // Load dynamic runtime configuration
+    async function init() {
+        try {
+            const res = await fetch("/config");
+            if (res.ok) {
+                const data = await res.json();
+                apiBaseUrl = data.apiUrl || "";
+            }
+        } catch (err) {
+            console.warn("Could not load runtime API configuration, using local relative endpoints", err);
+        }
+        updateProviderBadge();
+    }
+    init();
 
     // Character counter
     function updateCharCount() {
@@ -163,7 +179,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setLoading(true);
 
         try {
-            const response = await fetch("/sentimentAnalyzer", {
+            const response = await fetch(`${apiBaseUrl}/sentimentAnalyzer`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Accept": "application/json" },
                 body: JSON.stringify({ text })
