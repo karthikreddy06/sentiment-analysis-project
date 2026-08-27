@@ -32,7 +32,12 @@ class SentimentService:
     def _resolve_provider() -> BaseSentimentProvider:
         provider_key = os.getenv("SENTIMENT_PROVIDER", "").strip().lower()
         if not provider_key:
-            provider_key = "watson" if os.getenv("VERCEL") else "local"
+            if os.getenv("VERCEL") and os.getenv("SENTIMENT_ANALYSIS_API_URL"):
+                provider_key = "local"
+            elif os.getenv("VERCEL"):
+                provider_key = "watson"
+            else:
+                provider_key = "local"
             
         if provider_key == "local":
             logger.info("Initializing SentimentService with 'LocalTransformerProvider'.")
