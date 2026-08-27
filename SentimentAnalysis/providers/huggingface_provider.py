@@ -15,7 +15,7 @@ from .base import BaseSentimentProvider
 logger = logging.getLogger(__name__)
 
 DEFAULT_HF_MODEL = "cardiffnlp/twitter-roberta-base-sentiment-latest"
-DEFAULT_HF_API_URL = f"https://api-inference.huggingface.co/models/{DEFAULT_HF_MODEL}"
+DEFAULT_HF_API_URL = f"https://router.huggingface.co/hf-inference/models/{DEFAULT_HF_MODEL}"
 DEFAULT_TIMEOUT_SEC = 30
 
 
@@ -32,8 +32,11 @@ class HuggingFaceProvider(BaseSentimentProvider):
     def _get_config(self) -> Tuple[str, Dict[str, str], int]:
         model_id = os.getenv("HF_MODEL_ID", DEFAULT_HF_MODEL)
         api_url = os.getenv("SENTIMENT_ANALYSIS_API_URL", "").strip()
+        if "api-inference.huggingface.co" in api_url:
+            api_url = api_url.replace("https://api-inference.huggingface.co/models/", "https://router.huggingface.co/hf-inference/models/")
+            api_url = api_url.replace("api-inference.huggingface.co", "router.huggingface.co/hf-inference")
         if not api_url:
-            api_url = f"https://api-inference.huggingface.co/models/{model_id}"
+            api_url = f"https://router.huggingface.co/hf-inference/models/{model_id}"
         
         api_token = os.getenv("SENTIMENT_API_TOKEN", "").strip()
         

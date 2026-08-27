@@ -133,9 +133,8 @@ def get_config():
     """Returns runtime configuration for the frontend."""
     if request.method == "OPTIONS":
         return Response(status=200)
-    import os
     return jsonify({
-        "apiUrl": os.getenv("SENTIMENT_ANALYSIS_API_URL", "")
+        "apiUrl": ""
     }), 200
 
 

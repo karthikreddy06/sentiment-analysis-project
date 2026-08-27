@@ -37,7 +37,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const res = await fetch(`${apiBaseUrl}/health`);
             if (res.ok) {
                 const data = await res.json();
-                providerBadgeText.textContent = data.provider === "watson" ? "● WATSON NLP" : "● LOCAL AI ENGINE";
+                if (data.provider === "huggingface") {
+                    providerBadgeText.textContent = "● HUGGING FACE AI";
+                } else if (data.provider === "watson") {
+                    providerBadgeText.textContent = "● WATSON NLP";
+                } else {
+                    providerBadgeText.textContent = "● LOCAL AI ENGINE";
+                }
             }
         } catch (err) {
             console.warn("Could not fetch provider status from /health", err);
@@ -50,7 +56,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const res = await fetch("/config");
             if (res.ok) {
                 const data = await res.json();
-                apiBaseUrl = data.apiUrl || "";
+                // Ensure apiBaseUrl is only set if it's a valid Flask backend URL, not an external model API
+                if (data.apiUrl && !data.apiUrl.includes("huggingface.co")) {
+                    apiBaseUrl = data.apiUrl;
+                } else {
+                    apiBaseUrl = "";
+                }
             }
         } catch (err) {
             console.warn("Could not load runtime API configuration, using local relative endpoints", err);
@@ -119,7 +130,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const rawLabel = (data.label || "").toUpperCase();
         const score = typeof data.score === "number" ? data.score : parseFloat(data.score) || 0;
         const percentage = Math.round(score * 100 * 10) / 10;
-        const providerName = data.provider === "watson" ? "Watson NLP BERT" : "Local Transformer";
+        let providerName = "Local Transformer";
+        if (data.provider === "huggingface") {
+            providerName = "Hugging Face Inference API";
+        } else if (data.provider === "watson") {
+            providerName = "Watson NLP BERT";
+        }
 
         systemOutputText.textContent = data.message || `Identified as ${rawLabel} with score ${score}.`;
         displaySentiment.textContent = rawLabel || "UNKNOWN";
