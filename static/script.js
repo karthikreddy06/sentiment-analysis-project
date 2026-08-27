@@ -1,7 +1,7 @@
 /**
  * Sentiment Analysis Web Client
- * Handles real-time input validation, backend API communication,
- * loading states, visual state indicators, and error handling.
+ * Interacts with Flask backend, handles active provider status,
+ * loading animations, and dynamic result rendering.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -21,22 +21,36 @@ document.addEventListener("DOMContentLoaded", () => {
     const displaySentiment = document.getElementById("displaySentiment");
     const displayScore = document.getElementById("displayScore");
     const confidenceBar = document.getElementById("confidenceBar");
+    const progressPercent = document.getElementById("progressPercent");
     const timestampText = document.getElementById("timestampText");
+    const metaProviderText = document.getElementById("metaProviderText");
+    const providerBadgeText = document.getElementById("providerBadgeText");
     const sampleButtons = document.querySelectorAll(".chip-btn");
 
-    /**
-     * Update character counter in real time
-     */
+    let isRequestActive = false;
+
+    // Provider badge
+    async function updateProviderBadge() {
+        try {
+            const res = await fetch("/health");
+            if (res.ok) {
+                const data = await res.json();
+                providerBadgeText.textContent = data.provider === "watson" ? "● WATSON NLP" : "● LOCAL AI ENGINE";
+            }
+        } catch (err) {
+            console.warn("Could not fetch provider status from /health", err);
+        }
+    }
+    updateProviderBadge();
+
+    // Character counter
     function updateCharCount() {
         const count = textarea.value.length;
-        charCountBadge.textContent = `${count} character${count === 1 ? "" : "s"}`;
+        charCountBadge.textContent = `${count} / 2000 characters`;
     }
-
     textarea.addEventListener("input", updateCharCount);
 
-    /**
-     * Sample prompt population
-     */
+    // Sample prompts
     sampleButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
             const sampleText = btn.getAttribute("data-sample");
@@ -50,9 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    /**
-     * Clear & reset form
-     */
+    // Clear
     clearBtn.addEventListener("click", () => {
         textarea.value = "";
         updateCharCount();
@@ -61,87 +73,67 @@ document.addEventListener("DOMContentLoaded", () => {
         textarea.focus();
     });
 
-    /**
-     * Show Alert message
-     */
+    // Alert helpers
     function showAlert(message, type = "warning") {
-        alertBox.className = "alert-box";
-        if (type === "error") {
-            alertBox.classList.add("alert-error");
-            alertIcon.textContent = "⚠️";
-        } else if (type === "info") {
-            alertBox.classList.add("alert-info");
-            alertIcon.textContent = "ℹ️";
-        } else {
-            alertIcon.textContent = "⚠️";
-        }
-        alertMessage.textContent = message;
+        alertBox.className = `alert ${type}`;
         alertBox.classList.remove("hidden");
-    }
-
-    /**
-     * Hide Alert message
-     */
-    function hideAlert() {
-        alertBox.classList.add("hidden");
-    }
-
-    /**
-     * Hide Result Card
-     */
-    function hideResult() {
-        resultCard.classList.add("hidden");
-    }
-
-    /**
-     * Set loading state on button
-     */
-    function setLoading(isLoading) {
-        if (isLoading) {
-            analyzeBtn.disabled = true;
-            analyzeBtn.classList.add("loading");
+        alertMessage.textContent = message;
+        // SVG icons for alert types
+        if (type === "error") {
+            alertIcon.innerHTML = `<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>`;
         } else {
-            analyzeBtn.disabled = false;
-            analyzeBtn.classList.remove("loading");
+            alertIcon.innerHTML = `<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>`;
         }
     }
+    function hideAlert() { alertBox.classList.add("hidden"); }
+    function hideResult() { resultCard.classList.add("hidden"); }
+    function showResult() { resultCard.classList.remove("hidden"); }
 
-    /**
-     * Render the sentiment result in the UI
-     */
+    function setLoading(isLoading) {
+        isRequestActive = isLoading;
+        analyzeBtn.disabled = isLoading;
+        clearBtn.disabled = isLoading;
+        analyzeBtn.classList.toggle("loading", isLoading);
+    }
+
+    // Render result
     function renderResult(data) {
         hideAlert();
 
         const rawLabel = (data.label || "").toUpperCase();
         const score = typeof data.score === "number" ? data.score : parseFloat(data.score) || 0;
         const percentage = Math.round(score * 100 * 10) / 10;
+        const providerName = data.provider === "watson" ? "Watson NLP BERT" : "Local Transformer";
 
-        systemOutputText.textContent = data.message;
+        systemOutputText.textContent = data.message || `Identified as ${rawLabel} with score ${score}.`;
         displaySentiment.textContent = rawLabel || "UNKNOWN";
         displayScore.textContent = `${percentage}% (${score.toFixed(4)})`;
-        confidenceBar.style.width = `${Math.min(Math.max(percentage, 5), 100)}%`;
 
-        // Update timestamp
+        // Progress bar
+        confidenceBar.style.width = `${percentage}%`;
+        progressPercent.textContent = `${percentage}%`;
+        confidenceBar.className = "progress-fill";
+        if (rawLabel.includes("POSITIVE")) confidenceBar.classList.add("positive");
+        else if (rawLabel.includes("NEGATIVE")) confidenceBar.classList.add("negative");
+        else if (rawLabel.includes("NEUTRAL")) confidenceBar.classList.add("neutral");
+
+        metaProviderText.textContent = `Provider: ${providerName}`;
+
         const now = new Date();
-        timestampText.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        timestampText.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-        // Reset badge classes
-        sentimentBadge.className = "sentiment-indicator-badge";
-        resultCard.className = "result-card";
-
+        // Sentiment badge
+        sentimentBadge.className = "sentiment-badge";
         if (rawLabel.includes("POSITIVE")) {
             sentimentBadge.classList.add("positive");
-            resultCard.classList.add("positive");
             indicatorIcon.textContent = "🟢 😊";
             indicatorLabel.textContent = "Positive Sentiment";
         } else if (rawLabel.includes("NEGATIVE")) {
             sentimentBadge.classList.add("negative");
-            resultCard.classList.add("negative");
             indicatorIcon.textContent = "🔴 😞";
             indicatorLabel.textContent = "Negative Sentiment";
         } else if (rawLabel.includes("NEUTRAL")) {
             sentimentBadge.classList.add("neutral");
-            resultCard.classList.add("neutral");
             indicatorIcon.textContent = "🔵 😐";
             indicatorLabel.textContent = "Neutral Sentiment";
         } else {
@@ -149,17 +141,16 @@ document.addEventListener("DOMContentLoaded", () => {
             indicatorLabel.textContent = rawLabel || "Evaluated";
         }
 
-        resultCard.classList.remove("hidden");
+        showResult();
         resultCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
 
-    /**
-     * Analyze Sentiment Handler
-     */
+    // Analyze handler
     async function handleAnalyze() {
+        if (isRequestActive) return;
+
         const text = textarea.value.trim();
 
-        // Validate empty input locally
         if (!text) {
             hideResult();
             showAlert("Please enter some text to analyze.", "warning");
@@ -174,43 +165,21 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const response = await fetch("/sentimentAnalyzer", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                },
-                body: JSON.stringify({ textToAnalyze: text })
+                headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                body: JSON.stringify({ text })
             });
 
-            const contentType = response.headers.get("content-type") || "";
-            let resultData;
+            const resultData = await response.json();
 
-            if (contentType.includes("application/json")) {
-                resultData = await response.json();
-            } else {
-                const textResponse = await response.text();
-                resultData = {
-                    message: textResponse,
-                    status: response.ok ? "SUCCESS" : "API_ERROR"
-                };
-            }
-
-            const status = resultData.status || "";
-
-            // Handle service timeouts and connection errors
-            if (response.status === 503 || status === "TIMEOUT" || status === "CONNECTION_ERROR") {
-                showAlert(resultData.message || "Sentiment service is currently unavailable. Please try again later.", "error");
-            } else if (response.status === 400 || status === "EMPTY_INPUT") {
-                showAlert(resultData.message || "Please enter some text to analyze.", "warning");
-            } else if (status === "INVALID_INPUT" || resultData.message === "Invalid input! Try again.") {
-                showAlert("Invalid input! Try again.", "error");
-            } else if (response.status === 502 || status === "API_ERROR" || status === "INVALID_RESPONSE") {
-                showAlert(resultData.message || "Sentiment service is currently unavailable. Please try again later.", "error");
-            } else if (resultData.label && resultData.score !== undefined) {
+            if (response.ok && resultData.success) {
                 renderResult(resultData);
+            } else if (resultData.code === "INVALID_INPUT") {
+                showAlert(resultData.error || "We couldn't determine the sentiment of this text. Please try another sentence.", "warning");
+            } else if (resultData.code === "SERVICE_UNAVAILABLE" || response.status === 503) {
+                showAlert(resultData.error || "The sentiment service is temporarily unavailable. Please try again later.", "error");
             } else {
-                showAlert(resultData.message || "Sentiment service is currently unavailable. Please try again later.", "info");
+                showAlert(resultData.error || "An error occurred while analyzing sentiment.", "error");
             }
-
         } catch (error) {
             console.error("Sentiment analysis fetch error:", error);
             showAlert("Failed to connect to the server. Please ensure the Flask app is running.", "error");
@@ -221,13 +190,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     analyzeBtn.addEventListener("click", handleAnalyze);
 
-    // Allow Ctrl+Enter or Cmd+Enter to submit
+    // Ctrl/Cmd + Enter shortcut
     textarea.addEventListener("keydown", (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-            handleAnalyze();
-        }
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") handleAnalyze();
     });
 
-    // Initial character count
     updateCharCount();
 });

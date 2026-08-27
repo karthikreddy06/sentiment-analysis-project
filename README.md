@@ -1,6 +1,6 @@
-# Watson NLP Sentiment Analysis Project
+# Sentiment AI – Hybrid Sentiment Analysis Service
 
-An enterprise-ready, standalone Python sentiment analysis web application and reusable library. This project integrates the IBM Watson NLP BERT deep learning model to evaluate emotion, sentiment polarity, and confidence scores from arbitrary text inputs in real time.
+An enterprise-ready, standalone Python sentiment analysis web application and reusable library. This project features a modular provider-based architecture allowing seamless switching between a **local pretrained Hugging Face RoBERTa model** (the default) and the **IBM Watson NLP BERT deep learning model**.
 
 ---
 
@@ -11,44 +11,40 @@ An enterprise-ready, standalone Python sentiment analysis web application and re
 - [Architecture & Tech Stack](#architecture--tech-stack)
 - [Project Directory Structure](#project-directory-structure)
 - [Configuration & Environment Variables](#configuration--environment-variables)
-- [Network Diagnostics & Connectivity](#network-diagnostics--connectivity)
 - [Python Setup & Installation](#python-setup--installation)
 - [Running the Application](#running-the-application)
 - [Running Unit Tests](#running-unit-tests)
-- [Code Quality & Pylint](#code-quality--pylint)
-- [Watson NLP API Integration](#watson-nlp-api-integration)
+- [Watson NLP Diagnostic Script](#watson-nlp-diagnostic-script)
 - [API Endpoints Specification](#api-endpoints-specification)
 - [Error Handling Strategy](#error-handling-strategy)
-- [Example Usage](#example-usage)
 
 ---
 
 ## Overview
 
-The **Sentiment Analysis Project** is built from scratch as an end-to-end Python system demonstrating:
-- **Modular Python Packaging**: Clean separation between core machine learning inference logic and application delivery layers.
-- **Microservices & External Model Ingestion**: HTTP POST integration with Watson NLP BERT service.
-- **Granular Status Discrimination**: Differentiates `SUCCESS`, `INVALID_INPUT`, `TIMEOUT`, `CONNECTION_ERROR`, `API_ERROR`, and `INVALID_RESPONSE`.
-- **RESTful API Service**: Lightweight Flask server with multi-content-type response negotiation.
-- **Modern Responsive Frontend**: Accessible, glassmorphism-themed UI with real-time feedback, sample prompts, and confidence score visualizers.
-- **Deterministic Testing**: Isolated unit tests with request mocking (`unittest.mock`).
-- **Code Standards**: 100% compliant with PEP 8 and checked with Pylint.
+The **Sentiment AI Service** is designed to demonstrate modern, decoupled software patterns in Python:
+- **Modular Provider Architecture**: The analysis interface is defined by a common base class, isolating model initialization and API calls into distinct providers (`local` vs `watson`).
+- **Hybrid Backends**: 
+  - **Local**: Runs `cardiffnlp/twitter-roberta-base-sentiment-latest` in-memory. Zero external API calls, highly performant and private.
+  - **Watson**: Integrates with upstream Watson NLP sentiment aggregates.
+- **Granular Status Tracking**: Response structure includes descriptive states: `success`, `invalid_input`, `service_unavailable`, `api_error`, and `invalid_response`.
+- **RESTful API Service**: Lightweight Flask server with robust JSON exchange formats.
+- **Modern Responsive Frontend**: Accessible, premium dark-mode Sage & Cream UI with example inputs, real-time counter, and clean result displays showing confidence levels.
 
 ---
 
 ## Features
 
-- **Real-Time Sentiment Classification**: Detects `POSITIVE`, `NEGATIVE`, and `NEUTRAL` sentiment with high-precision confidence scores.
-- **Service-Level Error Discrimination**: Distinguishes upstream network timeouts / private lab endpoint unreachable states from invalid user input.
-- **Modern Responsive Web UI**:
-  - Dark-mode glassmorphism interface.
-  - Character counter with instant feedback.
-  - Quick sample prompt chips for one-click testing.
-  - Accessible visual sentiment badges with both color and distinct iconography.
-  - Interactive animated confidence score bar.
-- **Diagnostic Tool**: Included `scripts/test_watson_connection.py` utility to inspect DNS resolution, TCP handshake, and API latency.
-- **Full Test Coverage**: Unit tests covering positive, negative, neutral, error, timeout, and boundary conditions without live network dependencies.
-- **Strict Linting Standards**: Clean code verified with `pylint`.
+- **Real-Time Sentiment Classification**: Categorizes text into `POSITIVE`, `NEGATIVE`, or `NEUTRAL` with confidence scores.
+- **Lazy Initialization / Model Caching**: On the local provider, the transformer pipeline is initialized once upon the first request, then cached for subsequent evaluations.
+- **Service-Level Resilience**: upstream network failures or parsing issues are handled gracefully without terminating the server.
+- **Premium Responsive Web UI**:
+  - Warm sage, cream, and terracotta color theme.
+  - Grid-based two-column desktop hero layout putting the title and vase on the left and the analyzer card on the right.
+  - Real-time character counter.
+  - Sample chips for testing positive, negative, or neutral sentiment.
+  - Clean animated confidence meters showing the model's accuracy.
+- **Deterministic Offline Testing**: Extensive test coverage using mocks to simulate provider responses and failures offline.
 
 ---
 
@@ -56,49 +52,50 @@ The **Sentiment Analysis Project** is built from scratch as an end-to-end Python
 
 ```text
 sentiment_analysis_project/
-├── .git/
+├── .env.example
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
 ├── server.py
+│
 ├── SentimentAnalysis/
 │   ├── __init__.py
-│   └── sentiment_analysis.py
-├── scripts/
-│   └── test_watson_connection.py
+│   ├── sentiment_analysis.py
+│   ├── service.py
+│   └── providers/
+│       ├── __init__.py
+│       ├── base.py
+│       ├── local_provider.py
+│       └── watson_provider.py
+│
 ├── static/
 │   ├── script.js
 │   └── style.css
+│
 ├── templates/
 │   └── index.html
-└── tests/
-    ├── __init__.py
-    └── test_sentiment_analysis.py
+│
+├── tests/
+│   ├── __init__.py
+│   ├── test_local_provider.py
+│   └── test_sentiment_analysis.py
+│
+└── scripts/
+    └── test_watson_connection.py
 ```
 
 ---
 
 ## Configuration & Environment Variables
 
-The Watson service parameters can be configured via environment variables:
+All configuration is managed through environment variables loaded from a `.env` file via `python-dotenv`:
 
 | Variable | Default Value | Description |
 | :--- | :--- | :--- |
-| `WATSON_SENTIMENT_URL` | `https://sn-watson-sentiment-bert.labs.skills.network/v1/watson.runtime.nlp.v1/NlpService/SentimentPredict` | Watson NLP BERT Sentiment Predict endpoint URL |
+| `SENTIMENT_PROVIDER` | `local` | Active provider backend (`local` or `watson`) |
+| `WATSON_SENTIMENT_URL` | `https://sn-watson-sentiment-bert.labs.skills.network/v1/watson.runtime.nlp.v1/NlpService/SentimentPredict` | Upstream Watson endpoint |
 | `WATSON_MODEL_ID` | `sentiment_aggregated-bert-workflow_lang_multi_stock` | Watson NLP model identifier |
-| `WATSON_TIMEOUT` | `10` | Request timeout in seconds |
-
----
-
-## Network Diagnostics & Connectivity
-
-The Watson endpoint `sn-watson-sentiment-bert.labs.skills.network` resides within the IBM Skills Network internal VPC (`10.x.x.x` private IP space).
-
-To test endpoint reachability from your current environment, run:
-
-```bash
-python scripts/test_watson_connection.py
-```
+| `WATSON_TIMEOUT` | `10` | Upstream timeout in seconds |
 
 ---
 
@@ -110,14 +107,14 @@ Ensure Python 3.11+ is installed on your system.
 ### 2. Create Virtual Environment
 
 On Windows:
-```bash
+```powershell
 python -m venv .venv
 .venv\Scripts\activate
 ```
 
 On macOS/Linux:
 ```bash
-python3.11 -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 ```
 
@@ -139,82 +136,81 @@ python server.py
 
 Once started, navigate to:
 ```text
-http://127.0.0.1:5000/
+http://localhost:5000/
 ```
+
+The first request to the local provider will trigger the download/caching of the RoBERTa model. Subscriptions are saved locally inside Hugging Face's cache directory and loaded instantly on subsequent requests.
 
 ---
 
 ## Running Unit Tests
 
-The test suite validates sentiment classification logic and mocked network failure modes without internet access.
+To run the complete test suite:
 
 ```bash
-python -m unittest discover
+python -m unittest discover -v
 ```
 
 ---
 
-## Code Quality & Pylint
+## Watson NLP Diagnostic Script
 
-To verify code quality against PEP 8 and static analysis rules:
+Since the internal Watson NLP aggregates endpoint may be unreachable from external networks, you can diagnose DNS and HTTP connectivity using:
 
 ```bash
-python -m pylint server.py SentimentAnalysis/sentiment_analysis.py scripts/test_watson_connection.py
+python scripts/test_watson_connection.py
 ```
 
 ---
 
 ## API Endpoints Specification
 
-### 1. Web Interface
-- **Route**: `GET /`
-- **Description**: Delivers the single-page application interface.
+### 1. Health Status
+- **Route**: `GET /health`
+- **Description**: Returns server state and the active provider name.
+- **Response**:
+  ```json
+  {
+    "status": "ok",
+    "provider": "local"
+  }
+  ```
 
 ### 2. Sentiment Analyzer
-- **Route**: `POST /sentimentAnalyzer` or `GET /sentimentAnalyzer?textToAnalyze=<text>`
+- **Route**: `POST /sentimentAnalyzer`
 - **Headers**:
-  - `Content-Type: application/json` (for POST)
-  - `Accept: application/json` (optional)
+  - `Content-Type: application/json`
 - **JSON Request Body**:
   ```json
   {
-    "textToAnalyze": "I am thrilled with the great service!"
+    "text": "I absolutely love this application. It is fantastic!"
   }
   ```
-- **Success (200 OK)**:
+- **Success Response (200 OK)**:
   ```json
   {
+    "success": true,
     "label": "POSITIVE",
-    "score": 0.9876,
-    "message": "The given text has been identified as POSITIVE with a score of 0.9876.",
-    "status": "SUCCESS"
+    "score": 0.9861,
+    "provider": "local",
+    "status": "success",
+    "message": "The given text has been identified as POSITIVE with a score of 0.9861."
   }
   ```
-- **Service Unavailable / Timeout (503 Service Unavailable)**:
+- **Service Unavailable (503 Service Unavailable)**:
   ```json
   {
-    "label": null,
-    "score": null,
-    "message": "Sentiment service is currently unavailable. Please try again later.",
-    "status": "TIMEOUT"
+    "success": false,
+    "code": "SERVICE_UNAVAILABLE",
+    "error": "Sentiment service is currently unavailable. Please try again later."
   }
   ```
-- **Empty Input (400 Bad Request)**:
+- **Invalid/Empty Input (400 Bad Request)**:
   ```json
   {
-    "label": null,
-    "score": null,
-    "message": "Please enter some text to analyze.",
-    "status": "EMPTY_INPUT"
-  }
-  ```
-- **Invalid Input (200 OK / 400)**:
-  ```json
-  {
-    "label": null,
-    "score": null,
-    "message": "Invalid input! Try again.",
-    "status": "INVALID_INPUT"
+    "success": false,
+    "code": "INVALID_INPUT",
+    "error": "Please enter some text to analyze."
   }
   ```
 
@@ -222,8 +218,6 @@ python -m pylint server.py SentimentAnalysis/sentiment_analysis.py scripts/test_
 
 ## Error Handling Strategy
 
-1. **Empty / Blank Inputs**: Returns `"Please enter some text to analyze."` with HTTP 400.
-2. **Network Failures & Timeouts**: `requests.exceptions.Timeout` and `requests.exceptions.ConnectionError` are caught, logged server-side, and return `"Sentiment service is currently unavailable. Please try again later."` with HTTP 503.
-3. **HTTP 500 / Non-200 Responses**: Intercepted and returned cleanly as service unavailable with HTTP 502.
-4. **Malformed Responses / Missing Keys**: Safely parsed using `.get()` guards returning `INVALID_RESPONSE`.
-5. **Server Resilience**: The Flask app isolates per-request exceptions so the service remains 100% available.
+1. **Empty or Whitespace Inputs**: Triggers a fast-fail validator returning `INVALID_INPUT` and HTTP 400.
+2. **Upstream Network Failures**: Connection errors and timeouts from the Watson API return `SERVICE_UNAVAILABLE` and HTTP 503 instead of crashing the server.
+3. **Model Errors**: Gracefully handles Hugging Face pipeline initialization/inference faults by falling back to descriptive status codes.

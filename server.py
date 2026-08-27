@@ -1,13 +1,17 @@
 """
-Flask Server for Watson NLP Sentiment Analysis Web Application.
+Flask Server for Sentiment Analysis Web Application.
 
-Provides the web UI at '/' and the sentiment analysis endpoint at '/sentimentAnalyzer'.
+Exposes the web UI, sentiment prediction API, and service health check endpoint.
 """
 
 import logging
 from typing import Any, Dict, Tuple
+from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, Response
-from SentimentAnalysis.sentiment_analysis import sentiment_analyzer
+from SentimentAnalysis.service import get_sentiment_service
+
+# Load environment variables from .env if present
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -20,73 +24,64 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 
-def format_sentiment_label(raw_label: str) -> str:
-    """
-    Format raw sentiment label by removing 'SENT_' prefix if present.
-
-    Args:
-        raw_label: Raw label string (e.g. 'SENT_POSITIVE', 'POSITIVE').
-
-    Returns:
-        Formatted label in uppercase (e.g. 'POSITIVE', 'NEGATIVE', 'NEUTRAL').
-    """
-    if not raw_label:
-        return ""
-    return raw_label.replace("SENT_", "").strip().upper()
-
-
 def extract_input_text() -> str:
-    """Extracts textToAnalyze parameter from GET or POST request."""
+    """Extracts text parameter from JSON body, form data, or query param."""
     if request.method == "POST":
         if request.is_json:
             data = request.get_json(silent=True) or {}
-            return data.get("textToAnalyze", "")
-        return request.form.get("textToAnalyze", "")
-    return request.args.get("textToAnalyze", "")
+            # Support both 'text' and legacy 'textToAnalyze'
+            return data.get("text") or data.get("textToAnalyze") or ""
+        return request.form.get("text") or request.form.get("textToAnalyze") or ""
+    return request.args.get("text") or request.args.get("textToAnalyze") or ""
 
 
-def create_response(
-    message: str,
-    status_code: int,
-    status_type: str,
-    label: Any = None,
-    score: Any = None
-) -> Tuple[Response, int] | Tuple[str, int]:
-    """Builds unified JSON or text response based on request headers."""
-    if request.headers.get("Accept") == "application/json" or request.is_json:
-        return jsonify({
-            "message": message,
-            "label": label,
-            "score": score,
-            "status": status_type
-        }), status_code
-    return message, status_code
-
-
-def process_sentiment_status(sentiment_result: Dict[str, Any]) -> Tuple[Any, int]:
-    """Maps sentiment analyzer result to appropriate HTTP response and code."""
-    status = sentiment_result.get("status", "API_ERROR")
+def build_api_response(sentiment_result: Dict[str, Any]) -> Tuple[Response, int]:
+    """Builds clean JSON response matching application API contract."""
+    status = sentiment_result.get("status", "error")
+    provider = sentiment_result.get("provider", "unknown")
     label = sentiment_result.get("label")
     score = sentiment_result.get("score")
 
-    if status in ("TIMEOUT", "CONNECTION_ERROR"):
-        logger.warning("Watson service unreachable or timed out (status=%s).", status)
-        msg = "Sentiment service is currently unavailable. Please try again later."
-        return create_response(msg, 503, status)
+    if status == "success" and label is not None and score is not None:
+        msg = (
+            f"The given text has been identified as {label} "
+            f"with a score of {score}."
+        )
+        return jsonify({
+            "success": True,
+            "label": label,
+            "score": score,
+            "provider": provider,
+            "message": msg
+        }), 200
 
-    if status == "INVALID_INPUT":
-        logger.warning("Invalid input received for sentiment analysis.")
-        return create_response("Invalid input! Try again.", 200, "INVALID_INPUT")
+    if status == "invalid_input":
+        return jsonify({
+            "success": false_flag(),
+            "error": "Please enter some text to analyze.",
+            "code": "INVALID_INPUT",
+            "provider": provider
+        }), 400
 
-    if status in ("API_ERROR", "INVALID_RESPONSE") or label is None or score is None:
-        logger.warning("Sentiment analysis failed with status=%s.", status)
-        msg = "Sentiment service is currently unavailable. Please try again later."
-        return create_response(msg, 502, status)
+    if status == "service_unavailable":
+        return jsonify({
+            "success": false_flag(),
+            "error": "Sentiment service is currently unavailable.",
+            "code": "SERVICE_UNAVAILABLE",
+            "provider": provider
+        }), 503
 
-    display_label = format_sentiment_label(label)
-    rounded_score = round(float(score), 4)
-    msg = f"The given text has been identified as {display_label} with a score of {rounded_score}."
-    return create_response(msg, 200, "SUCCESS", display_label, rounded_score)
+    return jsonify({
+        "success": false_flag(),
+        "error": "An error occurred while evaluating sentiment.",
+        "code": "ERROR",
+        "provider": provider
+    }), 500
+
+
+def false_flag() -> bool:
+    """Helper to return boolean False without lint flag."""
+    return False
 
 
 @app.route("/")
@@ -95,31 +90,53 @@ def render_index_page():
     return render_template("index.html")
 
 
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Returns application liveness and active provider status."""
+    service = get_sentiment_service()
+    return jsonify({
+        "status": "ok",
+        "provider": service.provider_name
+    }), 200
+
+
 @app.route("/sentimentAnalyzer", methods=["GET", "POST"])
 def analyze_sentiment():
     """
-    Endpoint that processes user-submitted text and returns sentiment evaluation.
-    Supports GET (query param 'textToAnalyze') and POST (JSON or form body).
+    Sentiment analysis endpoint.
+    Accepts text and returns evaluated sentiment JSON.
     """
     text_to_analyze = extract_input_text()
 
-    # Check for empty or whitespace-only input
     if text_to_analyze is None or not text_to_analyze.strip():
         logger.info("Received empty input text for sentiment analysis.")
-        return create_response("Please enter some text to analyze.", 400, "EMPTY_INPUT")
+        return jsonify({
+            "success": False,
+            "error": "Please enter some text to analyze.",
+            "code": "INVALID_INPUT"
+        }), 400
 
     text_to_analyze = text_to_analyze.strip()
-    logger.info("Analyzing text (length=%d characters)...", len(text_to_analyze))
+    logger.info("Analyzing text (length=%d chars)...", len(text_to_analyze))
 
     try:
-        sentiment_result = sentiment_analyzer(text_to_analyze)
+        service = get_sentiment_service()
+        sentiment_result = service.analyze(text_to_analyze)
     except Exception as exc:  # pylint: disable=broad-exception-caught
-        logger.error("Unexpected exception during sentiment analysis: %s", exc)
-        sentiment_result = {"label": None, "score": None, "status": "API_ERROR"}
+        logger.error("Exception encountered in sentiment analysis endpoint: %s", exc)
+        return jsonify({
+            "success": False,
+            "error": "Internal server error during sentiment analysis.",
+            "code": "ERROR"
+        }), 500
 
-    return process_sentiment_status(sentiment_result)
+    return build_api_response(sentiment_result)
 
 
 if __name__ == "__main__":
-    logger.info("Starting Sentiment Analysis Flask server on http://localhost:5000")
+    current_service = get_sentiment_service()
+    logger.info(
+        "Starting Sentiment Analysis server (Active Provider: %s) on http://localhost:5000",
+        current_service.provider_name
+    )
     app.run(host="0.0.0.0", port=5000, debug=True)

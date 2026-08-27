@@ -3,140 +3,518 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Real-time text sentiment analysis powered by Watson NLP BERT and Flask.">
-    <title>Watson NLP Sentiment Analyzer | AI-Powered Text Intelligence</title>
-    <!-- Google Fonts -->
+    <meta name="description" content="AI-powered sentiment analysis with real-time confidence scoring.">
+    <title>Sentiment AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="background-decorations" aria-hidden="true">
-        <div class="glow-orb orb-1"></div>
-        <div class="glow-orb orb-2"></div>
-        <div class="glow-orb orb-3"></div>
+    <!-- Decorative background shapes -->
+    <div class="bg-shapes" aria-hidden="true">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+        <div class="shape shape-4"></div>
     </div>
 
-    <main class="app-container">
-        <!-- Header -->
-        <header class="header">
-            <div class="badge-pill">
-                <span class="pulse-dot"></span>
-                <span>Watson NLP BERT Engine</span>
+    <!-- Navigation -->
+    <header class="nav" role="banner">
+        <div class="nav-inner">
+            <div class="brand">
+                <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                </svg>
+                <div class="brand-text">
+                    <span class="brand-title">SENTIMENT AI</span>
+                    <span class="brand-tagline">Understand every emotion</span>
+                </div>
             </div>
-            <h1 class="main-title">Sentiment Analysis Intelligence</h1>
-            <p class="subtitle">
-                Evaluate emotional tone, sentiment orientation, and model confidence scores in real time using deep bidirectional language representations.
-            </p>
-        </header>
-
-        <!-- Main Card -->
-        <section class="card glass-panel" aria-label="Sentiment Analysis Workspace">
-            <form id="sentimentForm" class="analysis-form" onsubmit="return false;">
-                <div class="form-header">
-                    <label for="textToAnalyze" class="input-label">
-                        Enter text to analyze
-                    </label>
-                    <span class="char-count-badge" id="charCount">0 characters</span>
-                </div>
-
-                <div class="textarea-wrapper">
-                    <textarea 
-                        id="textToAnalyze" 
-                        name="textToAnalyze" 
-                        rows="5" 
-                        placeholder="Type or paste customer feedback, reviews, tweets, or sentences here... (e.g. 'I am extremely satisfied with the exceptional customer support!')"
-                        aria-label="Text to analyze for sentiment"
-                        maxlength="5000"
-                    ></textarea>
-                </div>
-
-                <!-- Sample Prompts -->
-                <div class="quick-samples">
-                    <span class="samples-label">Try sample:</span>
-                    <button type="button" class="chip-btn" data-sample="I absolutely loved the customer experience, it was fast and friendly!">Positive</button>
-                    <button type="button" class="chip-btn" data-sample="The application keeps crashing and the service is very frustrating.">Negative</button>
-                    <button type="button" class="chip-btn" data-sample="The quarterly report is scheduled for release next Thursday.">Neutral</button>
-                </div>
-
-                <!-- Action Controls -->
-                <div class="actions-row">
-                    <button type="button" id="clearBtn" class="btn btn-secondary">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                        <span>Clear Text</span>
-                    </button>
-
-                    <button type="button" id="analyzeBtn" class="btn btn-primary">
-                        <span class="btn-text">Analyze Sentiment</span>
-                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="22" y1="2" x2="11" y2="13"></line>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                        </svg>
-                        <div class="spinner" id="btnSpinner" aria-hidden="true"></div>
-                    </button>
-                </div>
-            </form>
-
-            <!-- Notification / Error Message Area -->
-            <div id="alertBox" class="alert-box hidden" role="alert" aria-live="polite">
-                <div class="alert-icon" id="alertIcon">⚠️</div>
-                <div class="alert-content" id="alertMessage"></div>
+            <nav class="nav-links" aria-label="Primary navigation">
+                <a href="#home" class="nav-link">Home</a>
+                <a href="#how-it-works" class="nav-link">How it works</a>
+                <a href="#about" class="nav-link">About</a>
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#documentation" class="nav-link">Documentation</a>
+                <a href="#help-center" class="nav-link">Help Center</a>
+            </nav>
+            <div class="nav-status" id="providerBadge">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span id="providerBadgeText">● LOCAL AI ENGINE</span>
             </div>
+        </div>
+    </header>
 
-            <!-- Result Card Area -->
-            <div id="resultCard" class="result-card hidden" aria-live="polite">
-                <div class="result-header">
-                    <div class="result-title-group">
-                        <span class="result-eyebrow">Analysis Result</span>
-                        <h2 class="result-heading" id="systemOutputText"></h2>
-                    </div>
-                    <div class="sentiment-indicator-badge" id="sentimentBadge">
-                        <span class="indicator-icon" id="indicatorIcon"></span>
-                        <span class="indicator-label" id="indicatorLabel"></span>
+    <main class="main" role="main">
+        <!-- Hero + Analyzer (Home) -->
+        <section id="home" class="hero-section" aria-labelledby="hero-title">
+            <div class="hero-inner container">
+                <div class="hero-content">
+                    <h1 id="hero-title" class="hero-title">
+                        Understand the <span class="highlight">sentiment</span> behind your text.
+                    </h1>
+                    <p class="hero-subtitle">Advanced AI analyzes emotional tone and provides confidence scores in real-time.</p>
+                    <div class="hero-botanical" aria-hidden="true">
+                        <svg class="botanical-svg" viewBox="0 0 260 340" preserveAspectRatio="xMidYMid meet">
+                            <!-- Soft background shapes -->
+                            <circle cx="130" cy="260" r="110" fill="#DCE8DC" opacity="0.45"/>
+                            <circle cx="200" cy="300" r="70" fill="#D6A384" opacity="0.35"/>
+                            <!-- Subtle beige dots -->
+                            <g fill="#EADCC6" opacity="0.5">
+                                <circle cx="50" cy="280" r="4"/>
+                                <circle cx="230" cy="260" r="3"/>
+                                <circle cx="80" cy="320" r="3"/>
+                                <circle cx="210" cy="330" r="2"/>
+                                <circle cx="30" cy="240" r="2"/>
+                            </g>
+                            <!-- Vase -->
+                            <path d="M100 260 L95 340 L165 340 L160 260 Z" fill="#F7F3ED" stroke="#A7B8A6" stroke-width="1.5"/>
+                            <ellipse cx="130" cy="260" rx="30" ry="6" fill="none" stroke="#A7B8A6" stroke-width="1"/>
+                            <!-- Leaves / branches -->
+                            <g stroke="#5D7A6A" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <!-- central stem -->
+                                <path d="M130 260 C130 210 115 180 110 150"/>
+                                <path d="M130 260 C130 210 145 180 150 150"/>
+                                <!-- side branches -->
+                                <path d="M115 210 C115 190 95 180 85 160"/>
+                                <path d="M145 210 C145 190 165 180 175 160"/>
+                                <path d="M110 180 C110 160 90 155 80 140"/>
+                                <path d="M150 180 C150 160 170 155 180 140"/>
+                            </g>
+                            <!-- Leaf shapes -->
+                            <g fill="#5D7A6A" opacity="0.85">
+                                <ellipse cx="85" cy="160" rx="14" ry="5" transform="rotate(-30 85 160)"/>
+                                <ellipse cx="175" cy="160" rx="14" ry="5" transform="rotate(30 175 160)"/>
+                                <ellipse cx="80" cy="140" rx="12" ry="4" transform="rotate(-40 80 140)"/>
+                                <ellipse cx="180" cy="140" rx="12" ry="4" transform="rotate(40 180 140)"/>
+                                <ellipse cx="110" cy="150" rx="10" ry="4" transform="rotate(-20 110 150)"/>
+                                <ellipse cx="150" cy="150" rx="10" ry="4" transform="rotate(20 150 150)"/>
+                            </g>
+                        </svg>
                     </div>
                 </div>
 
-                <div class="metrics-grid">
-                    <div class="metric-box">
-                        <span class="metric-title">Predicted Sentiment</span>
-                        <div class="metric-value" id="displaySentiment">--</div>
+                <!-- Analyzer Card -->
+                <article class="card analyzer-card" id="analyzerCard">
+                <header class="card-header">
+                    <h2 class="card-title">Analyze your text</h2>
+                    <p class="card-subtitle">Enter any text to analyze its sentiment.</p>
+                </header>
+
+                <form id="sentimentForm" class="analysis-form" onsubmit="return false;" novalidate>
+                    <div class="textarea-wrapper">
+                        <textarea
+                            id="textToAnalyze"
+                            name="textToAnalyze"
+                            rows="7"
+                            placeholder="Paste a review, feedback, message, or any text you want to analyze..."
+                            aria-label="Text to analyze for sentiment"
+                            maxlength="2000"
+                            spellcheck="false"
+                        ></textarea>
                     </div>
-                    <div class="metric-box">
-                        <span class="metric-title">Confidence Score</span>
-                        <div class="metric-value" id="displayScore">--</div>
-                        <div class="confidence-bar-container">
-                            <div class="confidence-bar-fill" id="confidenceBar"></div>
+
+                    <div class="char-count" id="charCount" aria-live="polite">0 / 2000 characters</div>
+
+                    <div class="samples" role="group" aria-label="Sample inputs">
+                        <button type="button" class="sample-btn chip-btn" data-sample="I absolutely love this product! It exceeds all expectations." aria-label="Positive example">
+                            <svg class="sample-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            Positive example
+                        </button>
+                        <button type="button" class="sample-btn chip-btn" data-sample="This service is terrible and completely unreliable." aria-label="Negative example">
+                            <svg class="sample-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                            Negative example
+                        </button>
+                        <button type="button" class="sample-btn chip-btn" data-sample="The meeting is scheduled for next Tuesday at 10 AM." aria-label="Neutral example">
+                            <svg class="sample-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                            Neutral example
+                        </button>
+                    </div>
+
+                    <div class="actions">
+                        <button type="button" id="clearBtn" class="btn btn-secondary" aria-label="Clear text">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                            <span>Clear</span>
+                        </button>
+                        <button type="button" id="analyzeBtn" class="btn btn-primary" aria-label="Analyze sentiment">
+                            <span class="btn-text">Analyze Sentiment →</span>
+                            <svg class="btn-icon spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M12 6v6l4 2"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Inline alert -->
+                <div id="alertBox" class="alert hidden" role="alert" aria-live="polite">
+                    <svg class="alert-icon" id="alertIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"></svg>
+                    <div class="alert-message" id="alertMessage"></div>
+                </div>
+
+                <!-- Result card (hidden until success) -->
+                <section id="resultCard" class="result-card hidden" role="status" aria-live="polite">
+                    <header class="result-header">
+                        <div class="result-title-group">
+                            <span class="result-eyebrow">ANALYSIS RESULT</span>
+                            <h3 class="result-heading" id="systemOutputText"></h3>
+                        </div>
+                        <div class="sentiment-badge" id="sentimentBadge">
+                            <span class="indicator-icon" id="indicatorIcon" aria-hidden="true"></span>
+                            <span class="indicator-label" id="indicatorLabel"></span>
+                        </div>
+                    </header>
+
+                    <div class="metrics">
+                        <div class="metric primary">
+                            <span class="metric-label">Sentiment</span>
+                            <div class="metric-value" id="displaySentiment">--</div>
+                        </div>
+                        <div class="metric secondary">
+                            <span class="metric-label">Confidence</span>
+                            <div class="metric-value" id="displayScore">--</div>
+                            <div class="progress-bar">
+                                <div class="progress-track">
+                                    <div class="progress-fill" id="confidenceBar" style="width:0%"></div>
+                                </div>
+                                <span class="progress-percent" id="progressPercent">0%</span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="result-meta">
-                    <span class="meta-item">
-                        <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 14 14"></polyline>
-                        </svg>
-                        <span id="timestampText">Just now</span>
-                    </span>
-                    <span class="meta-item">
-                        <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                        </svg>
-                        <span>Model: BERT-Aggregated Multilingual</span>
-                    </span>
+                    <footer class="result-meta">
+                        <span class="meta-item">
+                            <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 14 14"></polyline>
+                            </svg>
+                            <span id="timestampText">Just now</span>
+                        </span>
+                        <span class="meta-item">
+                            <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                            <span id="metaProviderText">Provider: Local Transformer</span>
+                        </span>
+                    </footer>
+                </section>
+            </article>
+        </div>
+
+        <!-- Quick Features -->
+        <div class="hero-features container">
+            <div class="quick-feature-card">
+                <div class="quick-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                </div>
+                <div class="quick-feature-content">
+                    <h3>Real-time Analysis</h3>
+                    <p>Get instant sentiment analysis powered by advanced AI models.</p>
+                </div>
+            </div>
+            <div class="quick-feature-card">
+                <div class="quick-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5a5 5 0 0 0-7-4 5 5 0 0 0-7 4c-2 1.1-3 3-3 5a7 7 0 0 0 7 7h3"></path>
+                        <path d="M12 2v20"></path>
+                        <path d="M12 8h3a2 2 0 0 1 2 2v1"></path>
+                        <path d="M12 12h4a1 1 0 0 1 1 1v1a2 2 0 0 1-2 2h-3"></path>
+                        <path d="M12 16h2a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1h-3"></path>
+                        <path d="M12 8H9a2 2 0 0 0-2 2v1"></path>
+                        <path d="M12 12H8a1 1 0 0 0-1 1v1a2 2 0 0 0 2 2h3"></path>
+                        <path d="M12 16h-2a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1h3"></path>
+                    </svg>
+                </div>
+                <div class="quick-feature-content">
+                    <h3>AI Powered</h3>
+                    <p>Machine learning models understand context and detect emotions.</p>
+                </div>
+            </div>
+            <div class="quick-feature-card">
+                <div class="quick-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+                <div class="quick-feature-content">
+                    <h3>Confidence Score</h3>
+                    <p>See how confident the model is about its prediction.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+        <!-- How it works -->
+        <section id="how-it-works" class="section section-how" aria-labelledby="how-title">
+            <div class="container">
+                <header class="section-header">
+                    <h2 id="how-title" class="section-title">How it works</h2>
+                    <p class="section-subtitle">Four simple steps to understand any text.</p>
+                </header>
+                <div class="steps-grid">
+                    <article class="step-card">
+                        <div class="step-number">01</div>
+                        <div class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></div>
+                        <h3>Enter your text</h3>
+                        <p>Paste or type any review, feedback, or message into the analyzer.</p>
+                    </article>
+                    <article class="step-card">
+                        <div class="step-number">02</div>
+                        <div class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path><path d="M12 6v6l4 2"></path></svg></div>
+                        <h3>AI processes the text</h3>
+                        <p>Our transformer model evaluates emotional tone in real time.</p>
+                    </article>
+                    <article class="step-card">
+                        <div class="step-number">03</div>
+                        <div class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg></div>
+                        <h3>Sentiment is classified</h3>
+                        <p>Result is Positive, Negative, or Neutral with a confidence score.</p>
+                    </article>
+                    <article class="step-card">
+                        <div class="step-number">04</div>
+                        <div class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg></div>
+                        <h3>Confidence score displayed</h3>
+                        <p>See how strongly the model predicts each sentiment.</p>
+                    </article>
                 </div>
             </div>
         </section>
 
-        <!-- Footer -->
-        <footer class="footer">
-            <p>Built with Python 3.11 &bull; Flask &bull; Watson NLP BERT &bull; Unit Tested &amp; PEP 8 Compliant</p>
-        </footer>
+        <!-- About -->
+        <section id="about" class="section section-about" aria-labelledby="about-title">
+            <div class="container about-inner">
+                <div class="about-content">
+                    <h2 id="about-title" class="section-title">About Sentiment AI</h2>
+                    <p class="about-text">Sentiment AI is a machine‑learning powered application designed to analyze the emotional tone of text. It helps users quickly understand whether a piece of text expresses a positive, negative, or neutral sentiment.</p>
+                    <p class="about-text">The service runs a state‑of‑the‑art transformer model locally, ensuring fast, private, and reliable predictions without sending data to external APIs unless you explicitly enable the Watson provider.</p>
+                </div>
+                <div class="about-illustration" aria-hidden="true">
+                    <div class="illustration-shape ill-a1"></div>
+                    <div class="illustration-shape ill-a2"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section id="features" class="section section-features" aria-labelledby="features-title">
+            <div class="container">
+                <header class="section-header">
+                    <h2 id="features-title" class="section-title">Features</h2>
+                    <p class="section-subtitle">Everything you need for reliable sentiment analysis.</p>
+                </header>
+                <div class="features-grid">
+                    <article class="feature-card">
+                        <div class="feature-icon-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg></div>
+                        <h3>Real-time Analysis</h3>
+                        <p>Analyze text instantly with sub‑second latency.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path><path d="M12 6v6l4 2"></path></svg></div>
+                        <h3>AI Powered</h3>
+                        <p>Powered by a real machine‑learning sentiment model.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg></div>
+                        <h3>Confidence Score</h3>
+                        <p>Understand how confident the model is about its prediction.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
+                        <h3>Multiple Sentiments</h3>
+                        <p>Detect Positive, Negative, and Neutral sentiment.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 12h6"></path></svg></div>
+                        <h3>Simple Interface</h3>
+                        <p>Analyze text without unnecessary complexity.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon-wrapper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="2"></rect><path d="M12 18v-6"></path></svg></div>
+                        <h3>Responsive Design</h3>
+                        <p>Works across desktop, tablet, and mobile.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- Documentation -->
+        <section id="documentation" class="section section-docs" aria-labelledby="docs-title">
+            <div class="container">
+                <header class="section-header">
+                    <h2 id="docs-title" class="section-title">Documentation</h2>
+                    <p class="section-subtitle">Getting started and API reference.</p>
+                </header>
+                <div class="docs-content">
+                    <section class="doc-block">
+                        <h3>Getting Started</h3>
+                        <ol>
+                            <li>Enter text in the analyzer above.</li>
+                            <li>Click <strong>Analyze Sentiment</strong>.</li>
+                            <li>Wait for the AI model to process the text.</li>
+                            <li>Review the predicted sentiment (Positive, Negative, Neutral).</li>
+                            <li>Review the confidence score.</li>
+                        </ol>
+                    </section>
+                    <section class="doc-block">
+                        <h3>Supported Sentiment Labels</h3>
+                        <ul>
+                            <li><strong>Positive</strong> – expresses happiness, approval, satisfaction.</li>
+                            <li><strong>Negative</strong> – expresses dissatisfaction, anger, sadness.</li>
+                            <li><strong>Neutral</strong> – objective or no strong emotional tone.</li>
+                        </ul>
+                    </section>
+                    <section class="doc-block">
+                        <h3>API Usage</h3>
+                        <p>Send a POST request to <code>/sentimentAnalyzer</code> with JSON body:</p>
+                        <pre><code>POST /sentimentAnalyzer
+Content-Type: application/json
+
+{
+  "text": "I love this product!"
+}
+</code></pre>
+                        <p>Successful response:</p>
+                        <pre><code>{
+  "success": true,
+  "label": "POSITIVE",
+  "score": 0.9873,
+  "provider": "local",
+  "message": "The given text has been identified as POSITIVE with a score of 0.9873."
+}
+</code></pre>
+                    </section>
+                    <section class="doc-block">
+                        <h3>Error Handling</h3>
+                        <p>The API returns appropriate HTTP status codes:</p>
+                        <ul>
+                            <li><code>400</code> – Invalid or empty input.</li>
+                            <li><code>503</code> – Service unavailable (model load failure or external provider timeout).</li>
+                        </ul>
+                    </section>
+                </div>
+            </div>
+        </section>
+
+        <!-- Help Center -->
+        <section id="help-center" class="section section-help" aria-labelledby="help-title">
+            <div class="container">
+                <header class="section-header">
+                    <h2 id="help-title" class="section-title">Help Center</h2>
+                    <p class="section-subtitle">Frequently asked questions.</p>
+                </header>
+                <div class="faq-list">
+                    <details class="faq-item">
+                        <summary>How does sentiment analysis work?</summary>
+                        <p>Our model uses a transformer‑based neural network trained on large text corpora to classify the emotional tone of the input text.</p>
+                    </details>
+                    <details class="faq-item">
+                        <summary>What does Positive mean?</summary>
+                        <p>The text expresses happiness, approval, satisfaction, or other positive feelings.</p>
+                    </details>
+                    <details class="faq-item">
+                        <summary>What does Negative mean?</summary>
+                        <p>The text expresses dissatisfaction, anger, sadness, or other negative feelings.</p>
+                    </details>
+                    <details class="faq-item">
+                        <summary>What does Neutral mean?</summary>
+                        <p>The text is objective, factual, or does not convey a strong emotional tone.</p>
+                    </details>
+                    <details class="faq-item">
+                        <summary>What does the confidence score represent?</summary>
+                        <p>It is the model’s probability (0‑1) for the predicted label, shown as a percentage.</p>
+                    </details>
+                    <details class="faq-item">
+                        <summary>Why might analysis fail?</summary>
+                        <p>Empty input, text longer than 2000 characters, or temporary model loading issues can cause errors.</p>
+                    </details>
+                    <details class="faq-item">
+                        <summary>Is my text stored?</summary>
+                        <p>No. All analysis happens in memory; no data is persisted or sent to third parties unless you enable the Watson provider.</p>
+                    </details>
+                </div>
+
+                <div class="support-contact">
+                    <h3>Need more help?</h3>
+                    <p>Contact me at:</p>
+                    <a href="mailto:karthikkarthik05421@gmail.com" class="contact-email">karthikkarthik05421@gmail.com</a>
+                    <p class="contact-note">We usually respond within 24 hours.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- What Sentiment Means card -->
+        <section class="section section-meaning" aria-labelledby="meaning-title">
+            <div class="container">
+                <div class="meaning-card">
+                    <h2 id="meaning-title" class="section-title">What Sentiment Means</h2>
+                    <div class="meaning-grid">
+                        <article class="meaning-item positive">
+                            <span class="meaning-emoji">☺</span>
+                            <h3>Positive</h3>
+                            <p>The text expresses happiness, approval, satisfaction, or positive feelings.</p>
+                        </article>
+                        <article class="meaning-item negative">
+                            <span class="meaning-emoji">☹</span>
+                            <h3>Negative</h3>
+                            <p>The text expresses dissatisfaction, anger, sadness, or negative feelings.</p>
+                        </article>
+                        <article class="meaning-item neutral">
+                            <span class="meaning-emoji">😐</span>
+                            <h3>Neutral</h3>
+                            <p>The text is objective or does not express a strong emotional tone.</p>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <p class="footer-logo">SENTIMENT AI</p>
+                <p class="footer-tagline">AI-powered sentiment analysis for clearer insights.</p>
+            </div>
+            <nav class="footer-links" aria-label="Footer navigation">
+                <div class="footer-column">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="#home">Home</a></li>
+                        <li><a href="#how-it-works">How it works</a></li>
+                        <li><a href="#about">About</a></li>
+                        <li><a href="#features">Features</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="#documentation">Documentation</a></li>
+                        <li><a href="#help-center">Help Center</a></li>
+                        <li><a href="#help-center">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Contact</h4>
+                    <p class="contact-email"><a href="mailto:karthikkarthik05421@gmail.com">karthikkarthik05421@gmail.com</a></p>
+                </div>
+                <div class="footer-social">
+                    <a href="#" class="social-link" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"></path></svg></a>
+                    <a href="#" class="social-link" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg></a>
+                    <a href="mailto:karthikkarthik05421@gmail.com" class="social-link" aria-label="Email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p class="copyright">© 2026 Sentiment AI. All rights reserved.</p>
+            </div>
+        </footer>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
