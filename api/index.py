@@ -5,3 +5,6 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from server import app
+
+# Expose WSGI handler for Vercel Serverless Functions
+handler = app

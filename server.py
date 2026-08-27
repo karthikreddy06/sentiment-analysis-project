@@ -20,8 +20,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize Flask application
-app = Flask(__name__)
+import os
+
+# Initialize Flask application with absolute template and static paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static")
+)
 
 
 class VercelPathMiddleware:
@@ -30,7 +37,7 @@ class VercelPathMiddleware:
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        path = environ.get('PATH_INFO', '')
+        path = environ.get('PATH_INFO') or ''
         for prefix in ['/api/index.py', '/api/index', '/api']:
             if path.startswith(prefix):
                 path = path[len(prefix):]

@@ -8,8 +8,6 @@ import logging
 import os
 from typing import Any, Dict, Optional
 from .providers.base import BaseSentimentProvider
-from .providers.local_provider import LocalTransformerProvider
-from .providers.watson_provider import WatsonNLPProvider
 from .providers.huggingface_provider import HuggingFaceProvider
 
 logger = logging.getLogger(__name__)
@@ -32,18 +30,16 @@ class SentimentService:
     @staticmethod
     def _resolve_provider() -> BaseSentimentProvider:
         provider_key = os.getenv("SENTIMENT_PROVIDER", "").strip().lower()
-        if not provider_key:
-            if os.getenv("VERCEL") and os.getenv("SENTIMENT_ANALYSIS_API_URL"):
-                provider_key = "huggingface"
-            elif os.getenv("VERCEL"):
-                provider_key = "huggingface"
-            else:
-                provider_key = "local"
+        if not provider_key or os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+            if not provider_key or os.getenv("VERCEL"):
+                provider_key = provider_key if provider_key in ("local", "watson", "huggingface") else "huggingface"
             
         if provider_key == "local":
+            from .providers.local_provider import LocalTransformerProvider
             logger.info("Initializing SentimentService with 'LocalTransformerProvider'.")
             return LocalTransformerProvider()
         if provider_key == "watson":
+            from .providers.watson_provider import WatsonNLPProvider
             logger.info("Initializing SentimentService with 'WatsonNLPProvider'.")
             return WatsonNLPProvider()
         if provider_key == "huggingface":
