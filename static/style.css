@@ -94,7 +94,14 @@ img { max-width: 100%; height: auto; }
 /* ==========================================================================
    Container
    ========================================================================== */
-.container { max-width: 1120px; margin: 0 auto; padding: 0 var(--space-xl); }
+.container {
+  width: min(1400px, calc(100% - 64px));
+  margin: 0 auto;
+}
+
+section[id] {
+  scroll-margin-top: 90px;
+}
 
 /* ==========================================================================
    Navigation
@@ -134,7 +141,7 @@ img { max-width: 100%; height: auto; }
 .hero-section { padding: var(--space-3xl) 0 var(--space-xl); }
 .hero-inner {
   display: grid;
-  grid-template-columns: 0.8fr 1.5fr;
+  grid-template-columns: minmax(280px, 0.75fr) minmax(600px, 1.5fr);
   gap: 48px;
   align-items: center;
 }

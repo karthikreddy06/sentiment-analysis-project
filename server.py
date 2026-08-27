@@ -130,6 +130,24 @@ def health_check():
     }), 200
 
 
+@app.route("/debug-info")
+def debug_info():
+    """Exposes runtime exceptions and variables for debugging."""
+    import traceback
+    import os
+    try:
+        service = get_sentiment_service()
+        return jsonify({
+            "status": "ok",
+            "provider_name": service.provider_name,
+            "provider_type": str(type(service.provider)),
+            "env_sentiment_provider": os.getenv("SENTIMENT_PROVIDER"),
+            "env_api_url": os.getenv("SENTIMENT_ANALYSIS_API_URL")
+        })
+    except Exception as e:
+        return Response(traceback.format_exc(), mimetype="text/plain", status=500)
+
+
 @app.route("/sentimentAnalyzer", methods=["GET", "POST", "OPTIONS"])
 def analyze_sentiment():
     """
