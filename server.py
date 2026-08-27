@@ -97,7 +97,8 @@ def page_not_found(e):
         "path": request.path,
         "environ_path_info": request.environ.get('PATH_INFO'),
         "environ_script_name": request.environ.get('SCRIPT_NAME'),
-        "url": request.url
+        "url": request.url,
+        "headers": dict(request.headers)
     }), 404
 
 
